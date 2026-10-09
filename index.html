@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DGS-Fingeralphabet</title>
+    <meta
+      name="description"
+      content="DGS-Fingeralphabet im Browser üben: Handerkennung per Webcam, Schablone pro Finger."
+    />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>✋</text></svg>"
+    />
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <header>
+      <h1>DGS-Fingeralphabet</h1>
+      <nav>
+        <button data-mode="erkennen" aria-pressed="true">Erkennen</button>
+        <button data-mode="ueben">Üben</button>
+        <button data-mode="aufnehmen">Aufnehmen</button>
+      </nav>
+      <span id="fps" aria-label="Bilder pro Sekunde">– FPS</span>
+    </header>
+
+    <main>
+      <div class="stage">
+        <video playsinline muted></video>
+        <canvas></canvas>
+        <p id="status" role="status">Kamera wird gestartet …</p>
+      </div>
+
+      <aside>
+        <section data-panel="erkennen">
+          <div id="recognized" class="letter" aria-live="polite">–</div>
+          <p class="hint">Zeige einen Buchstaben und halte ihn kurz.</p>
+          <p>Buchstabiert: <output id="spelled"></output></p>
+          <button id="clear-spelled">Text löschen</button>
+        </section>
+
+        <section data-panel="ueben" hidden>
+          <label>Buchstabe oder Wort <input id="word" value="HALLO" autocomplete="off" /></label>
+          <button id="random">Zufälliger Buchstabe</button>
+          <div id="word-view" class="word" aria-live="polite"></div>
+          <p class="hint">Die gestrichelte Hand ist die Schablone.</p>
+          <h2>Fortschritt</h2>
+          <div id="progress" class="grid"></div>
+        </section>
+
+        <section data-panel="aufnehmen" hidden>
+          <p class="hint">Nimmt Landmark-Daten für das Training auf. Export als JSON nach <code>data/raw/</code>.</p>
+          <label>Person <input id="person" placeholder="z. B. patrick" autocomplete="off" /></label>
+          <label
+            >Buchstabe
+            <select id="rec-letter"></select
+          ></label>
+          <button id="record">Aufnehmen</button>
+          <div id="counts" class="grid"></div>
+          <button id="export">JSON exportieren</button>
+          <button id="delete" class="danger">Alle Aufnahmen löschen</button>
+        </section>
+
+        <ul id="fingers" class="fingers"></ul>
+      </aside>
+    </main>
+
+    <footer>
+      Dieses Werkzeug ergänzt einen DGS-Kurs, es ersetzt ihn nicht. Das Kamerabild wird nur im Browser verarbeitet und
+      nicht übertragen. J, Z, Ä, Ö, Ü, ß und SCH enthalten Bewegung und folgen in Phase 2.
+    </footer>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
