@@ -15,61 +15,110 @@
     <link rel="stylesheet" href="/src/style.css" />
   </head>
   <body>
-    <header>
-      <h1>DGS-Fingeralphabet</h1>
-      <nav>
-        <button data-mode="erkennen" aria-pressed="true">Erkennen</button>
-        <button data-mode="ueben">Üben</button>
-        <button data-mode="aufnehmen">Aufnehmen</button>
-      </nav>
-      <span id="fps" aria-label="Bilder pro Sekunde">– FPS</span>
-    </header>
+    <div class="app">
+      <header>
+        <h1>DGS-Fingeralphabet</h1>
+        <nav class="modes" aria-label="Modus">
+          <button data-mode="erkennen" aria-pressed="true">Erkennen</button>
+          <button data-mode="ueben">Üben</button>
+          <button data-mode="aufnehmen">Aufnehmen</button>
+        </nav>
+        <span id="fps" aria-label="Bilder pro Sekunde">– FPS</span>
+      </header>
 
-    <main>
-      <div class="stage">
-        <video playsinline muted></video>
-        <canvas></canvas>
-        <p id="status" role="status">Kamera wird gestartet …</p>
-      </div>
+      <main>
+        <div class="viewer">
+          <div class="stage">
+            <video playsinline muted></video>
+            <canvas></canvas>
+            <p id="status" role="status">Kamera wird gestartet …</p>
+          </div>
+          <div class="source">
+            <label class="button">Videodatei laden <input id="video-file" type="file" accept="video/*" hidden /></label>
+            <button id="use-camera" hidden>Zurück zur Kamera</button>
+          </div>
+        </div>
 
-      <aside>
-        <section data-panel="erkennen">
-          <div id="recognized" class="letter" aria-live="polite">–</div>
-          <p class="hint">Zeige einen Buchstaben und halte ihn kurz.</p>
-          <p>Buchstabiert: <output id="spelled"></output></p>
-          <button id="clear-spelled">Text löschen</button>
-        </section>
+        <aside class="panel">
+          <section data-panel="erkennen">
+            <div class="readout">
+              <div id="recognized" class="letter empty" aria-live="polite">–</div>
+              <p class="hint">Zeige einen Buchstaben und halte ihn kurz.</p>
+            </div>
+            <div class="group">
+              <div class="group-head">
+                <h2>Buchstabiert</h2>
+                <button id="clear-spelled" class="quiet">Text löschen</button>
+              </div>
+              <output id="spelled" class="tape"></output>
+            </div>
+          </section>
 
-        <section data-panel="ueben" hidden>
-          <label>Buchstabe oder Wort <input id="word" value="HALLO" autocomplete="off" /></label>
-          <button id="random">Zufälliger Buchstabe</button>
-          <div id="word-view" class="word" aria-live="polite"></div>
-          <p class="hint">Die gestrichelte Hand ist die Schablone.</p>
-          <h2>Fortschritt</h2>
-          <div id="progress" class="grid"></div>
-        </section>
+          <section data-panel="ueben" hidden>
+            <div class="group">
+              <label for="word">Buchstabe oder Wort</label>
+              <div class="input-row">
+                <input id="word" value="HALLO" autocomplete="off" />
+                <button id="random">Zufälliger Buchstabe</button>
+              </div>
+            </div>
+            <div class="readout">
+              <div id="word-view" class="word" aria-live="polite"></div>
+              <p class="hint">Die gestrichelte Hand ist die Schablone.</p>
+            </div>
+            <div class="group">
+              <h2>Fortschritt</h2>
+              <div id="progress" class="grid"></div>
+            </div>
+          </section>
 
-        <section data-panel="aufnehmen" hidden>
-          <p class="hint">Nimmt Landmark-Daten für das Training auf. Export als JSON nach <code>data/raw/</code>.</p>
-          <label>Person <input id="person" placeholder="z. B. patrick" autocomplete="off" /></label>
-          <label
-            >Buchstabe
-            <select id="rec-letter"></select
-          ></label>
-          <button id="record">Aufnehmen</button>
-          <div id="counts" class="grid"></div>
-          <button id="export">JSON exportieren</button>
-          <button id="delete" class="danger">Alle Aufnahmen löschen</button>
-        </section>
+          <section data-panel="aufnehmen" hidden>
+            <p class="hint">
+              Nimmt Landmark-Daten für das Training auf. Gespeichert werden nur Frames, in denen die Hand ruhig ist.
+            </p>
+            <div class="field-row">
+              <div class="group">
+                <label for="person">Person</label>
+                <input id="person" placeholder="z. B. patrick" autocomplete="off" />
+              </div>
+              <div class="group">
+                <label for="rec-letter">Buchstabe</label>
+                <select id="rec-letter"></select>
+              </div>
+            </div>
+            <button id="record" class="primary">Aufnehmen</button>
+            <details>
+              <summary>Aufnehmen aus einer Videodatei</summary>
+              <p class="hint">
+                Zur Stelle springen, an der die Handform gehalten wird, dann „Aufnehmen“. Pausieren beendet die
+                Aufnahme. „Person“ ist die Person im Video.
+              </p>
+            </details>
+            <div class="group">
+              <h2>Aufnahmen pro Buchstabe</h2>
+              <div id="counts" class="grid"></div>
+            </div>
+            <div class="group">
+              <div class="actions">
+                <button id="export">JSON exportieren</button>
+                <button id="delete" class="danger">Alle Aufnahmen löschen</button>
+              </div>
+              <p class="hint">Exportierte Dateien gehören nach <code>data/raw/</code>.</p>
+            </div>
+          </section>
 
-        <ul id="fingers" class="fingers"></ul>
-      </aside>
-    </main>
+          <div class="group" id="finger-feedback">
+            <h2>Finger</h2>
+            <ul id="fingers" class="fingers"></ul>
+          </div>
+        </aside>
+      </main>
 
-    <footer>
-      Dieses Werkzeug ergänzt einen DGS-Kurs, es ersetzt ihn nicht. Das Kamerabild wird nur im Browser verarbeitet und
-      nicht übertragen. J, Z, Ä, Ö, Ü, ß und SCH enthalten Bewegung und folgen in Phase 2.
-    </footer>
+      <footer>
+        Dieses Werkzeug ergänzt einen DGS-Kurs, es ersetzt ihn nicht. Das Kamerabild wird nur im Browser verarbeitet und
+        nicht übertragen. J, Z, Ä, Ö, Ü, ß und SCH enthalten Bewegung und folgen in Phase 2.
+      </footer>
+    </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

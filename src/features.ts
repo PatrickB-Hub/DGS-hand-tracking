@@ -34,3 +34,7 @@ export function fingerDistance(a: number[], b: number[], finger: number): number
     sum += Math.hypot(a[i * 3] - b[i * 3], a[i * 3 + 1] - b[i * 3 + 1], a[i * 3 + 2] - b[i * 3 + 2])
   return sum / 4
 }
+
+/** Abstand zweier Handformen: Summe der Fingerabstände. */
+export const handDistance = (a: number[], b: number[]) =>
+  FINGERS.reduce((sum, _, f) => sum + fingerDistance(a, b, f), 0)

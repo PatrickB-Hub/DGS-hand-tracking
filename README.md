@@ -19,6 +19,11 @@ npm run build    # Typecheck + Production-Build nach dist/
   Fortschritt pro Buchstabe in `localStorage`.
 - **Aufnehmen**: Landmark-Daten pro Person und Buchstabe aufnehmen, als JSON exportieren (→ `data/raw/`).
 
+Alle Modi funktionieren auch mit einer Videodatei statt der Kamera („Videodatei laden“), z. B. um Referenzvideos
+auszuwerten. Aufgenommen werden nur Frames mit ruhiger Hand: Bewegung vor dem Halten wird übersprungen, Bewegung danach beendet
+den Durchgang (ebenso Pausieren oder Videoende). Beim Bau der Schablone werden zusätzlich die 25 % der Frames
+verworfen, die am weitesten vom Mittel entfernt sind.
+
 ## Aufbau
 
 | Datei               | Aufgabe                                                                               |

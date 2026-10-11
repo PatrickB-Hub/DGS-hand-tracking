@@ -1,4 +1,4 @@
-import { FINGERS, fingerDistance } from './features.ts'
+import { FINGERS, fingerDistance, handDistance } from './features.ts'
 
 // Statische Buchstaben. J, Z, Ä, Ö, Ü, ß und SCH enthalten Bewegung -> Phase 2 (siehe README).
 export const LETTERS = 'ABCDEFGHIKLMNOPQRSTUVWXY'.split('')
@@ -10,17 +10,31 @@ export type Template = { mean: number[]; tol: number[] }
 // Mit Daten mehrerer Personen per Leave-one-person-out nachjustieren.
 export const MIN_TOL = 0.2
 
-/** Schablone pro Buchstabe: Mittelwert der Samples plus Toleranz pro Finger aus deren Streuung. */
+// Anteil der Samples, die in die Schablone eingehen. Der Rest (am weitesten vom Mittel entfernt) sind meist
+// Übergänge in die Handform hinein oder aus ihr heraus und würden Mittelwert und Toleranz verwässern.
+export const KEEP = 0.75
+
+const mean = (fs: number[][]) => fs[0].map((_, i) => fs.reduce((sum, f) => sum + f[i], 0) / fs.length)
+
+/** Schablone pro Buchstabe: robuster Mittelwert der Samples plus Toleranz pro Finger aus deren Streuung. */
 export function buildTemplates(samples: Sample[]): Map<string, Template> {
-  const groups = Map.groupBy(samples, (s) => s.letter)
   const templates = new Map<string, Template>()
-  for (const [letter, group] of groups) {
-    const mean = group[0].features.map((_, i) => group.reduce((sum, s) => sum + s.features[i], 0) / group.length)
+  for (const [letter, group] of Map.groupBy(samples, (s) => s.letter)) {
+    let core = group.map((s) => s.features)
+    let m = mean(core)
+    for (let i = 0; i < 3; i++) {
+      // iterativ, weil Ausreißer im ersten Durchgang auch das Mittel verschieben
+      core = group
+        .map((s) => s.features)
+        .sort((a, b) => handDistance(a, m) - handDistance(b, m))
+        .slice(0, Math.max(1, Math.floor(group.length * KEEP)))
+      m = mean(core)
+    }
     const tol = FINGERS.map((_, f) => {
-      const spread = group.reduce((sum, s) => sum + fingerDistance(s.features, mean, f), 0) / group.length
+      const spread = core.reduce((sum, c) => sum + fingerDistance(c, m, f), 0) / core.length
       return Math.max(MIN_TOL, 2 * spread)
     })
-    templates.set(letter, { mean, tol })
+    templates.set(letter, { mean: m, tol })
   }
   return templates
 }
@@ -35,7 +49,7 @@ export function classify(features: number[], templates: Map<string, Template>): 
   let best: string | null = null
   let bestDist = Infinity
   for (const [letter, t] of templates) {
-    const d = FINGERS.reduce((sum, _, f) => sum + fingerDistance(features, t.mean, f), 0)
+    const d = handDistance(features, t.mean)
     if (d < bestDist) [best, bestDist] = [letter, d]
   }
   return best

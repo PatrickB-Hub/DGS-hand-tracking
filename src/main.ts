@@ -1,16 +1,20 @@
 import { buildTemplates, classify, fingerCheck, LETTERS, type Sample } from './classifier.ts'
-import { FINGER_NAMES, normalize } from './features.ts'
+import { FINGER_NAMES, handDistance, normalize } from './features.ts'
 import { COLOR, drawGhost, drawHand } from './render.ts'
-import { startTracking, type Hand } from './tracking.ts'
+import { createDetector, startCamera, type Hand } from './tracking.ts'
 
 const HOLD_FRAMES = 12 // so viele Kamerabilder muss eine Handform stabil sein (~0,4 s bei 30 FPS)
 const RECORD_FRAMES = 60
-const COUNTDOWN_MS = 3000 // Zeit, um die Hand nach dem Klick in Position zu bringen
+const COUNTDOWN_MS = 3000 // Kamera: Zeit, um die Hand nach dem Klick in Position zu bringen
+// Bewegung von Bild zu Bild (handDistance). Gemessen an echten Aufnahmen: gehaltene Handform ~0,08, Übergänge ~0,6.
+const MOTION_MAX = 0.25
+const MOVING_FRAMES_END = 5 // so viele bewegte Bilder in Folge beenden einen Durchgang
 
 const $ = <T extends HTMLElement>(sel: string) => document.querySelector<T>(sel)!
 const video = $<HTMLVideoElement>('video')
 const canvas = $<HTMLCanvasElement>('canvas')
 const ctx = canvas.getContext('2d')!
+const stage = $('.stage')
 
 // --- Persistenz ---
 function load<T>(key: string, fallback: T): T {
@@ -39,7 +43,8 @@ let stable = { letter: '', frames: 0 }
 let lastAppended = ''
 let word: string[] = []
 let wordPos = 0
-let recording: { letter: string; person: string; left: number; start: number } | null = null
+let recording: { letter: string; person: string; left: number; start: number; moving: number } | null = null
+let prevFeatures: number[] | null = null
 
 // --- UI ---
 document.querySelectorAll<HTMLButtonElement>('[data-mode]').forEach((btn) =>
@@ -47,6 +52,7 @@ document.querySelectorAll<HTMLButtonElement>('[data-mode]').forEach((btn) =>
     mode = btn.dataset.mode as Mode
     document.querySelectorAll('[data-mode]').forEach((b) => b.setAttribute('aria-pressed', String(b === btn)))
     document.querySelectorAll<HTMLElement>('[data-panel]').forEach((p) => (p.hidden = p.dataset.panel !== mode))
+    $('#finger-feedback').hidden = mode === 'aufnehmen' // beim Aufnehmen gibt es keine Schablone zum Vergleich
     stable = { letter: '', frames: 0 }
   }),
 )
@@ -61,6 +67,39 @@ const letterGrid = (counts: Record<string, number>, goal: number) =>
   LETTERS.map(
     (l) => `<span class="${(counts[l] ?? 0) >= goal ? 'done' : ''}">${l}<small>${counts[l] ?? 0}</small></span>`,
   ).join('')
+
+// Quelle: Kamera oder Videodatei
+let camera: MediaStream | null = null
+const fromFile = () => !video.srcObject
+const cameraBtn = $<HTMLButtonElement>('#use-camera')
+function useCamera() {
+  if (!camera) return
+  URL.revokeObjectURL(video.src)
+  video.removeAttribute('src')
+  video.srcObject = camera
+  video.controls = false
+  stage.classList.remove('file')
+  cameraBtn.hidden = true
+  video.play()
+}
+$<HTMLInputElement>('#video-file').addEventListener('change', (e) => {
+  const file = (e.target as HTMLInputElement).files?.[0]
+  if (!file) return
+  URL.revokeObjectURL(video.src)
+  video.srcObject = null
+  video.src = URL.createObjectURL(file)
+  video.controls = true
+  stage.classList.add('file')
+  cameraBtn.hidden = !camera
+  ;(e.target as HTMLInputElement).value = '' // dieselbe Datei erneut wählbar
+})
+cameraBtn.addEventListener('click', useCamera)
+video.addEventListener('resize', () => {
+  canvas.width = video.videoWidth
+  canvas.height = video.videoHeight
+})
+// Videodatei: Pausieren oder Videoende beendet eine laufende Aufnahme vorzeitig.
+video.addEventListener('pause', () => fromFile() && finishRecording())
 
 // Erkennen
 $('#clear-spelled').addEventListener('click', () => ($('#spelled').textContent = lastAppended = ''))
@@ -103,8 +142,11 @@ $('#record').addEventListener('click', () => {
     letter: $<HTMLSelectElement>('#rec-letter').value,
     person: name,
     left: RECORD_FRAMES,
-    start: performance.now() + COUNTDOWN_MS,
+    start: performance.now() + (fromFile() ? 0 : COUNTDOWN_MS),
+    moving: 0,
   }
+  $<HTMLButtonElement>('#record').disabled = true
+  if (fromFile()) video.play()
 })
 $('#export').addEventListener('click', () => {
   const a = document.createElement('a')
@@ -134,6 +176,7 @@ function recognize(hand: Hand, features: number[]) {
   drawHand(ctx, hand, ok ? ok.map((o) => (o ? COLOR.ok : COLOR.wrong)) : Array(5).fill(COLOR.neutral))
   showFingers(ok)
   $('#recognized').textContent = match || '–'
+  $('#recognized').classList.toggle('empty', !match)
   if (holdStable(match)) {
     if (match && match !== lastAppended) $('#spelled').textContent += match
     lastAppended = match // erst nach stabil gelöster Handform darf derselbe Buchstabe erneut kommen („LL“)
@@ -169,16 +212,30 @@ function practice(hand: Hand, features: number[]) {
 
 function record(hand: Hand, features: number[]) {
   drawHand(ctx, hand, Array(5).fill(COLOR.neutral))
+  const moved = prevFeatures ? handDistance(features, prevFeatures) : Infinity
+  prevFeatures = features
   if (!recording) return
   const wait = recording.start - performance.now()
   if (wait > 0) return setStatus(`Aufnahme „${recording.letter}“ startet in ${Math.ceil(wait / 1000)} …`)
+  // Nur ruhige Frames: Bewegung vor dem Halten wird übersprungen, Bewegung danach beendet den Durchgang.
+  const started = recording.left < RECORD_FRAMES
+  if (moved > MOTION_MAX) {
+    if (started && ++recording.moving >= MOVING_FRAMES_END) return finishRecording()
+    return setStatus(started ? 'Hand bewegt sich …' : `Aufnahme „${recording.letter}“: Handform ruhig halten`)
+  }
+  recording.moving = 0
   samples.push({ letter: recording.letter, person: recording.person, features: features.map((v) => +v.toFixed(4)) })
   if (--recording.left > 0) return setStatus(`Aufnahme „${recording.letter}“: noch ${recording.left} Frames`)
+  finishRecording()
+}
+
+function finishRecording() {
+  if (!recording) return
   recording = null
+  $<HTMLButtonElement>('#record').disabled = false
   templates = buildTemplates(samples)
   save('dgs.samples', samples)
   renderCounts()
-  setStatus('Aufnahme gespeichert.')
 }
 
 const statusEl = $('#status')
@@ -212,17 +269,22 @@ function loop(detect: () => Hand | null) {
   video.requestVideoFrameCallback(() => loop(detect))
 }
 
-startTracking(video)
-  .then((detect) => {
-    canvas.width = video.videoWidth
-    canvas.height = video.videoHeight
-    setStatus('')
-    loop(detect)
-  })
+const cameraReady = startCamera()
+  .then((stream) => (camera = stream))
   .catch((err: Error) =>
     setStatus(
       err.name === 'NotAllowedError'
-        ? 'Kein Kamerazugriff. Bitte im Browser erlauben und neu laden.'
-        : `Start fehlgeschlagen: ${err.message}`,
+        ? 'Kein Kamerazugriff. Du kannst trotzdem eine Videodatei laden.'
+        : `Kamera nicht verfügbar (${err.message}). Du kannst eine Videodatei laden.`,
     ),
   )
+createDetector(video)
+  .then(async (detect) => {
+    await cameraReady
+    if (camera && !video.src) {
+      useCamera()
+      setStatus('')
+    }
+    video.requestVideoFrameCallback(() => loop(detect)) // erst beim ersten echten Bild, nie auf ein leeres Video
+  })
+  .catch((err: Error) => setStatus(`Handerkennung konnte nicht geladen werden: ${err.message}`))

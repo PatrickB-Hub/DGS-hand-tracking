@@ -17,17 +17,17 @@ async function createLandmarker(delegate: 'GPU' | 'CPU') {
   )
 }
 
-/** Startet Kamera und Handerkennung. Liefert eine Funktion, die pro Frame die aktuelle Hand zurückgibt. */
-// ponytail: Erkennung läuft im Main-Thread; in einen Web Worker verschieben, falls die UI-FPS leiden.
-export async function startTracking(video: HTMLVideoElement): Promise<() => Hand | null> {
-  video.srcObject = await navigator.mediaDevices.getUserMedia({
-    video: { width: 1280, height: 720, facingMode: 'user' },
-    audio: false,
-  })
-  await video.play()
-  const landmarker = await createLandmarker('GPU').catch(() => createLandmarker('CPU'))
+export async function startCamera(): Promise<MediaStream> {
+  return navigator.mediaDevices.getUserMedia({ video: { width: 1280, height: 720, facingMode: 'user' }, audio: false })
+}
 
-  // Wird pro neuem Kamerabild aufgerufen (requestVideoFrameCallback), daher immer frische Daten.
+/**
+ * Lädt die Handerkennung für ein Video-Element (Kamera oder Videodatei).
+ * Die zurückgegebene Funktion wird pro neuem Bild aufgerufen (requestVideoFrameCallback).
+ */
+// ponytail: Erkennung läuft im Main-Thread; in einen Web Worker verschieben, falls die UI-FPS leiden.
+export async function createDetector(video: HTMLVideoElement): Promise<() => Hand | null> {
+  const landmarker = await createLandmarker('GPU').catch(() => createLandmarker('CPU'))
   return () => {
     const r = landmarker.detectForVideo(video, performance.now())
     return r.landmarks.length
@@ -35,6 +35,7 @@ export async function startTracking(video: HTMLVideoElement): Promise<() => Hand
           image: r.landmarks[0],
           world: r.worldLandmarks[0],
           // MediaPipe nimmt ein gespiegeltes Selfie-Bild an; unser Kamerabild ist ungespiegelt, also umgekehrt.
+          // Bei gespiegelten Videodateien kippt nur die Händigkeit; die normalisierten Features bleiben gleich.
           isLeft: r.handedness[0][0].categoryName === 'Right',
         }
       : null

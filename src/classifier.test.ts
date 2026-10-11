@@ -20,3 +20,16 @@ test('Fingerprüfung markiert genau den abweichenden Finger', () => {
   assert.deepEqual(fingerCheck(flat, templates.get('A')!), [true, true, true, true, true])
   assert.deepEqual(fingerCheck(flat, templates.get('B')!), [true, false, true, true, true])
 })
+
+test('Übergangs-Frames verschieben die Schablone nicht', () => {
+  const far = flat.map((v) => v + 3)
+  const t = buildTemplates([
+    ...[1, 2, 3, 4, 5, 6, 7, 8, 9].map((k) => ({ letter: 'A', person: 'p', features: jitter(flat, k) })),
+    ...[1, 2].map((k) => ({ letter: 'A', person: 'p', features: jitter(far, k) })),
+  ]).get('A')!
+  assert.deepEqual(fingerCheck(flat, t), [true, true, true, true, true])
+  assert.ok(
+    t.tol.every((v) => v < 0.5),
+    `Toleranz zu groß: ${t.tol}`,
+  )
+})

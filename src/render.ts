@@ -1,7 +1,7 @@
 import { FINGERS, type Point } from './features.ts'
 import type { Hand } from './tracking.ts'
 
-export const COLOR = { neutral: '#e8e6e1', ok: '#3ecf8e', wrong: '#ff5d5d', ghost: 'rgba(255,255,255,0.55)' }
+export const COLOR = { neutral: '#e8e6e1', ok: '#3ecf8e', wrong: '#ff5c9a', ghost: 'rgba(255,255,255,0.55)' }
 
 function drawSkeleton(
   ctx: CanvasRenderingContext2D,
