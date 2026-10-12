@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:phone": "vite --host --mode phone",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "test": "node --test \"src/**/*.test.ts\"",
@@ -14,6 +15,7 @@
   },
   "devDependencies": {
     "@types/node": "^26.6.4",
+    "@vitejs/plugin-basic-ssl": "^2.3.0",
     "prettier": "^3.9.9",
     "typescript": "^7.0.2",
     "vite": "^8.3.3"

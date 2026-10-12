@@ -32,6 +32,11 @@
             <video playsinline muted></video>
             <canvas></canvas>
             <p id="status" role="status">Kamera wird gestartet …</p>
+            <div class="hud" aria-hidden="true">
+              <span id="hud-label" class="hud-label">Erkannt</span>
+              <span id="hud-letter" class="hud-letter empty">–</span>
+              <span id="hud-fingers" class="hud-fingers"></span>
+            </div>
           </div>
           <div class="source">
             <label class="button">Videodatei laden <input id="video-file" type="file" accept="video/*" hidden /></label>
@@ -87,6 +92,7 @@
               </div>
             </div>
             <button id="record" class="primary">Aufnehmen</button>
+            <p id="rec-info" class="hint" role="status" hidden></p>
             <details>
               <summary>Aufnehmen aus einer Videodatei</summary>
               <p class="hint">
@@ -101,6 +107,7 @@
             <div class="group">
               <div class="actions">
                 <button id="export">JSON exportieren</button>
+                <button id="delete-letter" class="danger">Aufnahmen für „A“ löschen</button>
                 <button id="delete" class="danger">Alle Aufnahmen löschen</button>
               </div>
               <p class="hint">Exportierte Dateien gehören nach <code>data/raw/</code>.</p>

@@ -191,13 +191,14 @@ main {
   background: #000;
   border-radius: var(--radius);
   overflow: hidden;
-  /* Video passt auf Desktop in die Fensterhöhe (bei 16:9), statt aus dem Bild zu laufen */
-  max-width: calc((100dvh - 9.5rem) * 16 / 9);
-  min-width: min(100%, 20rem);
 }
+/* Video und Canvas teilen Box und object-fit, damit das Handskelett exakt auf dem Bild liegt –
+   egal ob Quer- oder Hochformat. Die Höhe ist begrenzt, damit das Bild nie aus dem Fenster läuft. */
 .stage video,
 .stage canvas {
   width: 100%;
+  max-height: calc(100dvh - 9.5rem);
+  object-fit: contain;
   display: block;
   transform: scaleX(-1); /* Kamera: Spiegelbild wie im Spiegel */
 }
@@ -210,6 +211,10 @@ main {
   inset: 0;
   height: 100%;
   pointer-events: none; /* Video-Steuerelemente bleiben bedienbar */
+}
+/* Overlay über dem Video: nur auf schmalen Bildschirmen, dort ist das Panel beim Gebärden außer Sicht */
+.hud {
+  display: none;
 }
 #status {
   position: absolute;
@@ -449,16 +454,85 @@ footer {
   border-top: 1px solid var(--line);
 }
 
-/* Schmale Fenster: Panel unter das Video */
+/* Schmale Fenster: Panel unter das Video, Rückmeldung als Overlay im Bild */
 @media (max-width: 900px) {
   main {
     grid-template-columns: 1fr;
   }
-  .stage {
-    max-width: none;
-  }
   .panel {
     position: static;
+  }
+  .stage video,
+  .stage canvas {
+    max-height: 58dvh; /* Hochformat-Kamera: Panel bleibt erreichbar */
+    object-fit: cover; /* Bild füllt die Box; erkannt wird trotzdem auf dem vollen Kamerabild */
+  }
+  #status {
+    max-width: calc(100% - 8.5rem);
+  }
+  .hud {
+    position: absolute;
+    top: 0.75rem;
+    right: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.35rem;
+    min-width: 6rem;
+    padding: 0.5rem 0.75rem 0.65rem;
+    background: rgb(18 19 22 / 0.82);
+    border: 1px solid rgb(255 255 255 / 0.08);
+    border-radius: var(--radius);
+  }
+  .hud-label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--muted);
+  }
+  .hud-letter {
+    font-size: 2.75rem;
+    font-weight: 700;
+    line-height: 1;
+    color: var(--accent);
+  }
+  .hud-letter.empty {
+    color: #7d7a73;
+    font-weight: 300;
+  }
+  .hud-fingers {
+    display: flex;
+    gap: 0.3rem;
+  }
+  /* gefüllt = passt, Ring = anpassen: unterscheidbar auch ohne Farbe */
+  .hud-fingers span {
+    width: 0.7rem;
+    height: 0.7rem;
+    border-radius: 50%;
+    border: 2px solid #565b65;
+  }
+  .hud-fingers .ok {
+    background: var(--ok);
+    border-color: var(--ok);
+  }
+  .hud-fingers .wrong {
+    border-color: var(--wrong);
+  }
+}
+/* Touch: Mindestgröße für Finger; 16px in Feldern verhindert das Auto-Zoomen von iOS beim Fokus */
+@media (pointer: coarse) {
+  button,
+  input,
+  select,
+  label.button,
+  button.quiet {
+    min-height: 44px;
+  }
+  input,
+  select {
+    font-size: 16px;
+  }
+  summary {
+    padding-block: 0.4rem;
   }
 }
 @media (max-width: 480px) {

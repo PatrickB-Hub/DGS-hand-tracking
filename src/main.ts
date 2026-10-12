@@ -52,15 +52,29 @@ document.querySelectorAll<HTMLButtonElement>('[data-mode]').forEach((btn) =>
     mode = btn.dataset.mode as Mode
     document.querySelectorAll('[data-mode]').forEach((b) => b.setAttribute('aria-pressed', String(b === btn)))
     document.querySelectorAll<HTMLElement>('[data-panel]').forEach((p) => (p.hidden = p.dataset.panel !== mode))
-    $('#finger-feedback').hidden = mode === 'aufnehmen' // beim Aufnehmen gibt es keine Schablone zum Vergleich
+    $('#finger-feedback').hidden = hud.hidden = mode === 'aufnehmen' // beim Aufnehmen keine Schablone zum Vergleich
+    hudLabel.textContent = mode === 'ueben' ? 'Zeige' : 'Erkannt'
+    setHudLetter(mode === 'ueben' ? word[wordPos] : '')
     stable = { letter: '', frames: 0 }
   }),
 )
 
 const fingerList = $('#fingers')
 fingerList.innerHTML = FINGER_NAMES.map((n) => `<li>${n}</li>`).join('')
+// Kompakte Anzeige über dem Video (nur auf schmalen Bildschirmen sichtbar, siehe CSS)
+const hud = $('.hud')
+const hudLabel = $('#hud-label')
+const hudLetter = $('#hud-letter')
+const hudFingers = $('#hud-fingers')
+hudFingers.innerHTML = '<span></span>'.repeat(5)
+function setHudLetter(letter: string | undefined) {
+  hudLetter.textContent = letter || '–'
+  hudLetter.classList.toggle('empty', !letter)
+}
 function showFingers(ok: boolean[] | null) {
-  ;[...fingerList.children].forEach((li, f) => (li.className = ok ? (ok[f] ? 'ok' : 'wrong') : ''))
+  const cls = (f: number) => (ok ? (ok[f] ? 'ok' : 'wrong') : '')
+  ;[...fingerList.children].forEach((li, f) => (li.className = cls(f)))
+  ;[...hudFingers.children].forEach((dot, f) => (dot.className = cls(f)))
 }
 
 const letterGrid = (counts: Record<string, number>, goal: number) =>
@@ -115,6 +129,7 @@ function renderWord() {
   $('#word-view').innerHTML = word.length
     ? word.map((c, i) => `<span class="${i < wordPos ? 'done' : i === wordPos ? 'current' : ''}">${c}</span>`).join('')
     : 'Bitte Buchstaben A–Y eingeben (ohne J).'
+  if (mode === 'ueben') setHudLetter(word[wordPos])
   $('#progress').innerHTML = letterGrid(progress, 3)
 }
 wordInput.addEventListener('input', () => setWord(wordInput.value))
@@ -127,26 +142,40 @@ setWord(wordInput.value)
 // Aufnehmen
 const person = $<HTMLInputElement>('#person')
 person.value = localStorage.getItem('dgs.person') ?? ''
-$('#rec-letter').innerHTML = LETTERS.map((l) => `<option>${l}</option>`).join('')
+const recLetter = $<HTMLSelectElement>('#rec-letter')
+recLetter.innerHTML = LETTERS.map((l) => `<option>${l}</option>`).join('')
+const deleteLetterBtn = $('#delete-letter')
+const syncDeleteLabel = () => (deleteLetterBtn.textContent = `Aufnahmen für „${recLetter.value}“ löschen`)
+recLetter.addEventListener('change', syncDeleteLabel)
+syncDeleteLabel()
+function setSamples(next: Sample[]) {
+  samples = next
+  templates = buildTemplates(samples)
+  save('dgs.samples', samples)
+  renderCounts()
+}
 function renderCounts() {
   const counts: Record<string, number> = {}
   for (const s of samples) counts[s.letter] = (counts[s.letter] ?? 0) + 1
   $('#counts').innerHTML = letterGrid(counts, RECORD_FRAMES)
 }
 renderCounts()
-$('#record').addEventListener('click', () => {
+const recordBtn = $<HTMLButtonElement>('#record')
+recordBtn.addEventListener('click', () => {
+  if (recording) return finishRecording()
   const name = person.value.trim().toLowerCase()
   if (!name) return person.focus()
   localStorage.setItem('dgs.person', name)
   recording = {
-    letter: $<HTMLSelectElement>('#rec-letter').value,
+    letter: recLetter.value,
     person: name,
     left: RECORD_FRAMES,
     start: performance.now() + (fromFile() ? 0 : COUNTDOWN_MS),
     moving: 0,
   }
-  $<HTMLButtonElement>('#record').disabled = true
+  recordBtn.textContent = 'Aufnahme beenden'
   if (fromFile()) video.play()
+  else startVideoCapture(recording.letter, name)
 })
 $('#export').addEventListener('click', () => {
   const a = document.createElement('a')
@@ -156,12 +185,37 @@ $('#export').addEventListener('click', () => {
   URL.revokeObjectURL(a.href)
 })
 $('#delete').addEventListener('click', () => {
-  if (!confirm('Alle lokalen Aufnahmen löschen? Vorher exportieren!')) return
-  samples = []
-  templates = buildTemplates(samples)
-  save('dgs.samples', samples)
-  renderCounts()
+  if (confirm('Alle lokalen Aufnahmen löschen? Vorher exportieren!')) setSamples([])
 })
+deleteLetterBtn.addEventListener('click', () => {
+  const letter = recLetter.value
+  if (confirm(`Alle Aufnahmen für „${letter}“ löschen?`)) setSamples(samples.filter((s) => s.letter !== letter))
+})
+
+// Nur für die Entwicklung (npm run dev): Kamerabild jedes Durchgangs als Video nach data/videos/ speichern.
+// Im Production-Build ist import.meta.env.DEV false, der Code fällt beim Bundling heraus.
+let videoCapture: MediaRecorder | null = null
+function startVideoCapture(letter: string, who: string) {
+  if (!import.meta.env.DEV || !camera) return
+  const type = ['video/mp4', 'video/webm'].find((t) => MediaRecorder.isTypeSupported(t))
+  if (!type) return
+  const stamp = new Date().toLocaleString('sv').replace(' ', '_').replaceAll(':', '-') // 2026-10-12_14-03-22
+  const name = `${letter}_${who
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^\w-]/g, '_')}_${stamp}.${type === 'video/mp4' ? 'mp4' : 'webm'}`
+  const chunks: Blob[] = []
+  const rec = new MediaRecorder(camera, { mimeType: type })
+  rec.ondataavailable = (e) => chunks.push(e.data)
+  rec.onstop = async () => {
+    const res = await fetch(`/__save-video?name=${name}`, { method: 'POST', body: new Blob(chunks) }).catch(() => null)
+    const info = $('#rec-info')
+    info.hidden = false
+    info.textContent = res?.ok ? `Video gespeichert: data/videos/${name}` : 'Video konnte nicht gespeichert werden.'
+  }
+  rec.start()
+  videoCapture = rec
+}
 
 // --- Pro Frame ---
 function holdStable(letter: string) {
@@ -177,6 +231,7 @@ function recognize(hand: Hand, features: number[]) {
   showFingers(ok)
   $('#recognized').textContent = match || '–'
   $('#recognized').classList.toggle('empty', !match)
+  setHudLetter(match)
   if (holdStable(match)) {
     if (match && match !== lastAppended) $('#spelled').textContent += match
     lastAppended = match // erst nach stabil gelöster Handform darf derselbe Buchstabe erneut kommen („LL“)
@@ -232,10 +287,10 @@ function record(hand: Hand, features: number[]) {
 function finishRecording() {
   if (!recording) return
   recording = null
-  $<HTMLButtonElement>('#record').disabled = false
-  templates = buildTemplates(samples)
-  save('dgs.samples', samples)
-  renderCounts()
+  recordBtn.textContent = 'Aufnehmen'
+  videoCapture?.stop()
+  videoCapture = null
+  setSamples(samples)
 }
 
 const statusEl = $('#status')
@@ -269,6 +324,14 @@ function loop(detect: () => Hand | null) {
   video.requestVideoFrameCallback(() => loop(detect))
 }
 
+// Ohne Berührung würde das Smartphone nach ~30 s dimmen. Die Sperre endet, wenn der Tab in den Hintergrund geht,
+// daher beim Zurückkehren neu anfordern. Fehlt die API oder wird abgelehnt, läuft die App normal weiter.
+function keepScreenAwake() {
+  const request = () => navigator.wakeLock?.request('screen').catch(() => {})
+  request()
+  document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && request())
+}
+
 const cameraReady = startCamera()
   .then((stream) => (camera = stream))
   .catch((err: Error) =>
@@ -285,6 +348,7 @@ createDetector(video)
       useCamera()
       setStatus('')
     }
+    keepScreenAwake()
     video.requestVideoFrameCallback(() => loop(detect)) // erst beim ersten echten Bild, nie auf ein leeres Video
   })
   .catch((err: Error) => setStatus(`Handerkennung konnte nicht geladen werden: ${err.message}`))

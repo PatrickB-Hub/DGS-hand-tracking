@@ -8,6 +8,7 @@ Handform, eine Schablone zeigt pro Finger, was stimmt und was nicht. Das Kamerab
 ```sh
 npm install
 npm run dev      # lokaler Dev-Server (Kamera braucht localhost oder HTTPS)
+npm run dev:phone # Dev-Server per HTTPS im WLAN, zum Testen auf dem Smartphone
 npm test         # Tests für Normalisierung und Klassifikator
 npm run build    # Typecheck + Production-Build nach dist/
 ```
@@ -18,6 +19,9 @@ npm run build    # Typecheck + Production-Build nach dist/
 - **Üben**: Buchstabe oder Wort vorgeben, die gestrichelte Geisterhand zeigt die Zielform, jeder Finger wird grün/rot.
   Fortschritt pro Buchstabe in `localStorage`.
 - **Aufnehmen**: Landmark-Daten pro Person und Buchstabe aufnehmen, als JSON exportieren (→ `data/raw/`).
+
+Nur im Dev-Server (`npm run dev`) wird jeder Kamera-Durchgang zusätzlich als Video nach `data/videos/` gespeichert
+(z. B. `T_patrick_2026-10-12_14-03-22.mp4`, nicht im Git). Im Production-Build fehlt diese Funktion.
 
 Alle Modi funktionieren auch mit einer Videodatei statt der Kamera („Videodatei laden“), z. B. um Referenzvideos
 auszuwerten. Aufgenommen werden nur Frames mit ruhiger Hand: Bewegung vor dem Halten wird übersprungen, Bewegung danach beendet
