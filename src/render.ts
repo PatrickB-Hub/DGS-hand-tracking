@@ -40,7 +40,8 @@ export function drawHand(ctx: CanvasRenderingContext2D, hand: Hand, colors: stri
 
 /**
  * Schablone als gestrichelte Geisterhand, am Handgelenk und an der Handgröße des Nutzers ausgerichtet.
- * Näherung: projiziert die normalisierten 3D-Features einfach auf x/y.
+ * `template` sind normalisierte Kamera-Koordinaten, bereits in die Ausrichtung der Nutzerhand gedreht.
+ * Näherung: projiziert die 3D-Punkte einfach auf x/y.
  */
 export function drawGhost(ctx: CanvasRenderingContext2D, hand: Hand, template: number[]) {
   const { width: w, height: h } = ctx.canvas

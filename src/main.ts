@@ -1,5 +1,5 @@
 import { buildTemplates, classify, fingerCheck, LETTERS, type Sample } from './classifier.ts'
-import { FINGER_NAMES, handDistance, normalize } from './features.ts'
+import { FINGER_NAMES, fromHandShape, handDistance, handFrame, normalize } from './features.ts'
 import { COLOR, drawGhost, drawHand } from './render.ts'
 import { createDetector, startCamera, type Hand } from './tracking.ts'
 
@@ -249,7 +249,7 @@ function practice(hand: Hand, features: number[]) {
   }
   const ok = fingerCheck(features, t)
   const hit = ok.every(Boolean) && classify(features, templates) === target
-  drawGhost(ctx, hand, t.mean)
+  drawGhost(ctx, hand, fromHandShape(t.mean, handFrame(features))) // Schablone in der Ausrichtung der Nutzerhand
   drawHand(
     ctx,
     hand,

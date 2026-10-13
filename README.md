@@ -30,13 +30,13 @@ verworfen, die am weitesten vom Mittel entfernt sind.
 
 ## Aufbau
 
-| Datei               | Aufgabe                                                                               |
-| ------------------- | ------------------------------------------------------------------------------------- |
-| `src/tracking.ts`   | Kamera + MediaPipe HandLandmarker (WASM und Modell selbst gehostet)                   |
-| `src/features.ts`   | Normalisierung: Verschiebung, Skalierung, Spiegelung für Linkshänder; Rotation bleibt |
-| `src/classifier.ts` | Schablonen (Mittelwert + Toleranz pro Finger) und Nearest-Template-Erkennung          |
-| `src/render.ts`     | Handskelett und Geisterhand auf dem Canvas                                            |
-| `src/main.ts`       | UI, Modi, Persistenz                                                                  |
+| Datei               | Aufgabe                                                                                                  |
+| ------------------- | -------------------------------------------------------------------------------------------------------- |
+| `src/tracking.ts`   | Kamera + MediaPipe HandLandmarker (WASM und Modell selbst gehostet)                                      |
+| `src/features.ts`   | Normalisierung (Verschiebung, Skalierung, Spiegelung für Linkshänder) und Umrechnung in Hand-Koordinaten |
+| `src/classifier.ts` | Schablonen (Mittelwert + Toleranz pro Finger) und Nearest-Template-Erkennung                             |
+| `src/render.ts`     | Handskelett und Geisterhand auf dem Canvas                                                               |
+| `src/main.ts`       | UI, Modi, Persistenz                                                                                     |
 
 Schablone und Erkennung bauen auf denselben aufgenommenen Daten auf.
 
@@ -56,4 +56,7 @@ Schablone und Erkennung bauen auf denselben aufgenommenen Daten auf.
 
 - Nur statische Handformen; Buchstaben mit Bewegung sind ausgeklammert (siehe Phase 2).
 - Die Mindesttoleranz der Schablone (`MIN_TOL`) ist ein Startwert und wird mit Daten mehrerer Personen kalibriert.
+- Die Schablonen vergleichen nur die Handform in Hand-Koordinaten, nicht die Ausrichtung: Kamerawinkel schwanken
+  zwischen Personen stärker als Buchstaben. Leave-one-person-out mit 2 Personen: 51/48 % → 62/68 %. Buchstaben, die
+  sich nur in der Ausrichtung unterscheiden (G/H/T, P/Q, K), soll das trainierte Modell trennen.
 - Die Geisterhand ist eine 2D-Projektion der normalisierten 3D-Daten und bei stark gedrehter Hand nur eine Näherung.

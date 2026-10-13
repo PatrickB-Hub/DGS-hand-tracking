@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { normalize, type Point } from './features.ts'
+import { fromHandShape, handFrame, normalize, toHandShape, type Point } from './features.ts'
 
 // Pseudo-zufällige, aber reproduzierbare Hand.
 const hand: Point[] = Array.from({ length: 21 }, (_, i) => ({
@@ -53,4 +53,23 @@ test('Rotation bleibt erhalten', () => {
     false,
   )
   assert.ok(rotated.some((v, i) => Math.abs(v - base[i]) > 0.1))
+})
+
+// Beliebige 3D-Drehung (um x, dann um z), wie ein anderer Kamerawinkel oder eine geneigte Hand.
+const rotate = (p: Point, a: number, b: number): Point => {
+  const y = p.y * Math.cos(a) - p.z * Math.sin(a)
+  const z = p.y * Math.sin(a) + p.z * Math.cos(a)
+  return { x: p.x * Math.cos(b) - y * Math.sin(b), y: p.x * Math.sin(b) + y * Math.cos(b), z }
+}
+
+test('Handform ist unabhängig von der Ausrichtung zur Kamera', () => {
+  const tilted = normalize(
+    hand.map((p) => rotate(p, 0.8, -0.5)),
+    false,
+  )
+  close(toHandShape(tilted), toHandShape(base))
+})
+
+test('Handform lässt sich verlustfrei in die Ausrichtung der Hand zurückdrehen', () => {
+  close(fromHandShape(toHandShape(base), handFrame(base)), base)
 })
