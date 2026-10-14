@@ -129,6 +129,13 @@ function renderWord() {
   $('#word-view').innerHTML = word.length
     ? word.map((c, i) => `<span class="${i < wordPos ? 'done' : i === wordPos ? 'current' : ''}">${c}</span>`).join('')
     : 'Bitte Buchstaben A–Y eingeben (ohne J).'
+  const sign = $<HTMLImageElement>('#sign')
+  const target = word[wordPos]
+  sign.hidden = !target
+  if (target) {
+    sign.src = `${import.meta.env.BASE_URL}fingeralphabet/${target}.jpg`
+    sign.alt = `Handform für ${target} im DGS-Fingeralphabet`
+  }
   if (mode === 'ueben') setHudLetter(word[wordPos])
   $('#progress').innerHTML = letterGrid(progress, 3)
 }

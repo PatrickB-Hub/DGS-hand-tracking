@@ -60,3 +60,9 @@ Schablone und Erkennung bauen auf denselben aufgenommenen Daten auf.
   zwischen Personen stärker als Buchstaben. Leave-one-person-out mit 2 Personen: 51/48 % → 62/68 %. Buchstaben, die
   sich nur in der Ausrichtung unterscheiden (G/H/T, P/Q, K), soll das trainierte Modell trennen.
 - Die Geisterhand ist eine 2D-Projektion der normalisierten 3D-Daten und bei stark gedrehter Hand nur eine Näherung.
+
+## Quellen
+
+Handzeichnungen in `public/fingeralphabet/`: [Wikimedia Commons, Category:German manual alphabet](https://commons.wikimedia.org/wiki/Category:German_manual_alphabet),
+Richard Huber bzw. Deutsche Gehörlosenhilfe Bayern e. V., nach einer Infokarte des Landesverbands Bayern der
+Gehörlosen e. V. Lizenz [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/deed.de) (S: CC BY 4.0).

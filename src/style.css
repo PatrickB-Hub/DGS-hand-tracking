@@ -355,6 +355,14 @@ code {
 }
 
 /* Üben */
+/* Zeichnungen sind schwarz auf weiß, daher eigene helle Karte */
+.sign {
+  width: auto;
+  height: 160px;
+  padding: 0.5rem;
+  background: #fff;
+  border-radius: var(--radius);
+}
 .word {
   font-size: 2.6rem;
   font-weight: 700;
