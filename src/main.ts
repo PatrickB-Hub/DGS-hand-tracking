@@ -1,5 +1,6 @@
 import { buildTemplates, classify, fingerCheck, LETTERS, type Sample } from './classifier.ts'
 import { FINGER_NAMES, fromHandShape, handDistance, handFrame, normalize } from './features.ts'
+import { createHandView } from './hand3d.ts'
 import { COLOR, drawGhost, drawHand } from './render.ts'
 import { createDetector, startCamera, type Hand } from './tracking.ts'
 
@@ -32,7 +33,23 @@ function save(key: string, value: unknown) {
   }
 }
 
-let samples = load<Sample[]>('dgs.samples', [])
+// Aufnahmen liegen in IndexedDB: Mit Rohdaten pro Frame sind sie zu groß für localStorage (~5 MB).
+const db = new Promise<IDBDatabase>((resolve, reject) => {
+  const req = indexedDB.open('dgs', 1)
+  req.onupgradeneeded = () => req.result.createObjectStore('data')
+  req.onsuccess = () => resolve(req.result)
+  req.onerror = () => reject(req.error)
+})
+async function dbRequest<T>(mode: IDBTransactionMode, run: (store: IDBObjectStore) => IDBRequest<T>): Promise<T> {
+  const req = run((await db).transaction('data', mode).objectStore('data'))
+  return new Promise((resolve, reject) => {
+    req.onsuccess = () => resolve(req.result)
+    req.onerror = () => reject(req.error)
+  })
+}
+
+let samples: Sample[] = []
+let samplesLoaded = false // erst nach dem Laden speichern, sonst überschreibt ein Fehler beim Laden den Bestand
 let templates = buildTemplates(samples)
 const progress = load<Record<string, number>>('dgs.progress', {})
 
@@ -43,7 +60,8 @@ let stable = { letter: '', frames: 0 }
 let lastAppended = ''
 let word: string[] = []
 let wordPos = 0
-let recording: { letter: string; person: string; left: number; start: number; moving: number } | null = null
+let recording: { letter: string; person: string; left: number; start: number; moving: number; take: number } | null =
+  null
 let prevFeatures: number[] | null = null
 
 // --- UI ---
@@ -119,6 +137,14 @@ video.addEventListener('pause', () => fromFile() && finishRecording())
 $('#clear-spelled').addEventListener('click', () => ($('#spelled').textContent = lastAppended = ''))
 
 // Üben
+const hand3d = $<HTMLCanvasElement>('#hand3d')
+const handView = (() => {
+  try {
+    return createHandView(hand3d)
+  } catch {
+    return null // ohne WebGL bleibt es beim Bild
+  }
+})()
 const wordInput = $<HTMLInputElement>('#word')
 function setWord(text: string) {
   word = [...text.toUpperCase()].filter((c) => LETTERS.includes(c))
@@ -133,8 +159,14 @@ function renderWord() {
   const target = word[wordPos]
   sign.hidden = !target
   if (target) {
-    sign.src = `${import.meta.env.BASE_URL}fingeralphabet/${target}.jpg`
+    sign.src = `${import.meta.env.BASE_URL}fingeralphabet/${target}.webp`
     sign.alt = `Handform für ${target} im DGS-Fingeralphabet`
+  }
+  const t = target && templates.get(target)
+  hand3d.hidden = !t || !handView
+  if (t && handView) {
+    handView.show(fromHandShape(t.mean, t.frame))
+    hand3d.ariaLabel = `Schablone für ${target} als drehbare 3D-Hand`
   }
   if (mode === 'ueben') setHudLetter(word[wordPos])
   $('#progress').innerHTML = letterGrid(progress, 3)
@@ -158,8 +190,18 @@ syncDeleteLabel()
 function setSamples(next: Sample[]) {
   samples = next
   templates = buildTemplates(samples)
-  save('dgs.samples', samples)
   renderCounts()
+  renderWord() // die 3D-Hand hängt an den Schablonen
+  if (!samplesLoaded) return
+  dbRequest('readwrite', (store) => store.put(samples, 'samples'))
+    .then(() => localStorage.removeItem('dgs.samples')) // Altbestand erst nach erfolgreichem Speichern entfernen
+    .catch(() => alert('Aufnahmen konnten nicht gespeichert werden. Bitte als JSON exportieren.'))
+}
+// Frühere Versionen speicherten in localStorage; deren Aufnahmen werden einmalig übernommen.
+async function loadSamples() {
+  const stored = await dbRequest<Sample[] | undefined>('readonly', (store) => store.get('samples'))
+  samplesLoaded = true
+  setSamples(stored ?? load<Sample[]>('dgs.samples', []))
 }
 function renderCounts() {
   const counts: Record<string, number> = {}
@@ -179,6 +221,7 @@ recordBtn.addEventListener('click', () => {
     left: RECORD_FRAMES,
     start: performance.now() + (fromFile() ? 0 : COUNTDOWN_MS),
     moving: 0,
+    take: Date.now(),
   }
   recordBtn.textContent = 'Aufnahme beenden'
   if (fromFile()) video.play()
@@ -286,7 +329,17 @@ function record(hand: Hand, features: number[]) {
     return setStatus(started ? 'Hand bewegt sich …' : `Aufnahme „${recording.letter}“: Handform ruhig halten`)
   }
   recording.moving = 0
-  samples.push({ letter: recording.letter, person: recording.person, features: features.map((v) => +v.toFixed(4)) })
+  const round = (v: number) => +v.toFixed(4)
+  samples.push({
+    letter: recording.letter,
+    person: recording.person,
+    features: features.map(round),
+    take: recording.take,
+    t: Math.round(-wait),
+    image: hand.image.flatMap((p) => [p.x, p.y, p.z].map(round)),
+    aspect: round(video.videoWidth / video.videoHeight),
+    isLeft: hand.isLeft,
+  })
   if (--recording.left > 0) return setStatus(`Aufnahme „${recording.letter}“: noch ${recording.left} Frames`)
   finishRecording()
 }
@@ -348,9 +401,12 @@ const cameraReady = startCamera()
         : `Kamera nicht verfügbar (${err.message}). Du kannst eine Videodatei laden.`,
     ),
   )
+const samplesReady = loadSamples().catch((err: Error) =>
+  alert(`Aufnahmen konnten nicht geladen werden (${err.message}). Neue Aufnahmen werden nicht gespeichert.`),
+)
 createDetector(video)
   .then(async (detect) => {
-    await cameraReady
+    await Promise.all([cameraReady, samplesReady])
     if (camera && !video.src) {
       useCamera()
       setStatus('')

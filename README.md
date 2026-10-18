@@ -36,6 +36,7 @@ verworfen, die am weitesten vom Mittel entfernt sind.
 | `src/features.ts`   | Normalisierung (Verschiebung, Skalierung, Spiegelung für Linkshänder) und Umrechnung in Hand-Koordinaten |
 | `src/classifier.ts` | Schablonen (Mittelwert + Toleranz pro Finger) und Nearest-Template-Erkennung                             |
 | `src/render.ts`     | Handskelett und Geisterhand auf dem Canvas                                                               |
+| `src/hand3d.ts`     | Drehbare 3D-Hand der Schablone im Üben-Modus (three.js)                                                  |
 | `src/main.ts`       | UI, Modi, Persistenz                                                                                     |
 
 Schablone und Erkennung bauen auf denselben aufgenommenen Daten auf.
@@ -63,6 +64,7 @@ Schablone und Erkennung bauen auf denselben aufgenommenen Daten auf.
 
 ## Quellen
 
-Handzeichnungen in `public/fingeralphabet/`: [Wikimedia Commons, Category:German manual alphabet](https://commons.wikimedia.org/wiki/Category:German_manual_alphabet),
-Richard Huber bzw. Deutsche Gehörlosenhilfe Bayern e. V., nach einer Infokarte des Landesverbands Bayern der
-Gehörlosen e. V. Lizenz [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/deed.de) (S: CC BY 4.0).
+Handzeichnungen in `public/fingeralphabet/`: Bild mit freundlicher Genehmigung von [Anysign](https://www.anysign.app)
+([DGS-Fingeralphabet](https://www.anysign.app/de/dgs-fingeralphabet)), verwendet unter
+[CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/deed.de). Nur nichtkommerzielle Nutzung, Bedingungen
+im [Impressum von Anysign](https://www.anysign.app/de/impressum).

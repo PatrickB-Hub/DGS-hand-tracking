@@ -356,6 +356,17 @@ code {
 
 /* Üben */
 /* Zeichnungen sind schwarz auf weiß, daher eigene helle Karte */
+.sign-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+}
+.hand3d {
+  background: var(--surface-3);
+  border-radius: var(--radius);
+  cursor: grab;
+}
 .sign {
   width: auto;
   height: 160px;

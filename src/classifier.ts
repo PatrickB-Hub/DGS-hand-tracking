@@ -1,13 +1,24 @@
-import { FINGERS, fingerDistance, handDistance, toHandShape } from './features.ts'
+import { FINGERS, fingerDistance, handDistance, meanFrame, toHandShape } from './features.ts'
 
 // Statische Buchstaben. J, Z, Ä, Ö, Ü, ß und SCH enthalten Bewegung -> Phase 2 (siehe README).
 export const LETTERS = 'ABCDEFGHIKLMNOPQRSTUVWXY'.split('')
 
-export type Sample = { letter: string; person: string; features: number[] }
+export type Sample = {
+  letter: string
+  person: string
+  features: number[]
+  // Rohdaten für spätere Features (Position im Bild, Bewegung). Die App nutzt sie nicht; ältere Aufnahmen haben sie nicht.
+  take?: number // Startzeit des Durchgangs (ms seit 1970): gruppiert die Frames einer Aufnahme
+  t?: number // ms seit Start des Durchgangs; Lücken = übersprungene Frames (Bewegung, keine Hand)
+  image?: number[] // 21 Bild-Landmarks × (x, y, z), ungespiegelt; x/y relativ zu Bildbreite/-höhe
+  aspect?: number // Bildbreite / Bildhöhe, um x/y vergleichbar zu machen
+  isLeft?: boolean
+}
 // mean ist die Handform in Hand-Koordinaten (toHandShape). Verglichen wird nur die Form, nicht die Ausrichtung:
 // Die schwankt zwischen Kameras und Personen stärker als zwischen Buchstaben. Buchstaben, die sich nur in der
 // Ausrichtung unterscheiden (z. B. G/H/T, P/Q), soll später das trainierte Modell trennen.
-export type Template = { mean: number[]; tol: number[] }
+// frame ist die mittlere Ausrichtung der Aufnahmen, nur für die Darstellung (3D-Hand).
+export type Template = { mean: number[]; tol: number[]; frame: ReturnType<typeof meanFrame> }
 
 // ponytail: feste Mindesttoleranz (Einheit: Handgelenk->Mittelfinger-Grundgelenk = 1).
 // Mit Daten mehrerer Personen per Leave-one-person-out nachjustieren.
@@ -37,7 +48,7 @@ export function buildTemplates(samples: Sample[]): Map<string, Template> {
       const spread = core.reduce((sum, c) => sum + fingerDistance(c, m, f), 0) / core.length
       return Math.max(MIN_TOL, 2 * spread)
     })
-    templates.set(letter, { mean: m, tol })
+    templates.set(letter, { mean: m, tol, frame: meanFrame(group.map((s) => s.features)) })
   }
   return templates
 }

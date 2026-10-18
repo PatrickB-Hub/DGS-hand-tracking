@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { fromHandShape, handFrame, normalize, toHandShape, type Point } from './features.ts'
+import { fromHandShape, handFrame, meanFrame, normalize, toHandShape, type Point } from './features.ts'
 
 // Pseudo-zufällige, aber reproduzierbare Hand.
 const hand: Point[] = Array.from({ length: 21 }, (_, i) => ({
@@ -72,4 +72,8 @@ test('Handform ist unabhängig von der Ausrichtung zur Kamera', () => {
 
 test('Handform lässt sich verlustfrei in die Ausrichtung der Hand zurückdrehen', () => {
   close(fromHandShape(toHandShape(base), handFrame(base)), base)
+})
+
+test('mittlere Ausrichtung gleicher Hände ist ihre Ausrichtung', () => {
+  close(meanFrame([base, base, base]).flat(), handFrame(base).flat())
 })

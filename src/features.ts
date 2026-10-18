@@ -60,6 +60,16 @@ export function handFrame(features: number[]): [Vec, Vec, Vec] {
   return [cross(y, z), y, z]
 }
 
+/** Mittlere Ausrichtung mehrerer Hände: Achsen von handFrame mitteln und wieder rechtwinklig machen. */
+export function meanFrame(features: number[][]): [Vec, Vec, Vec] {
+  const frames = features.map(handFrame)
+  const avg = (k: number) => [0, 1, 2].map((c) => frames.reduce((sum, f) => sum + f[k][c], 0)) as Vec
+  const y = unit(avg(1))
+  const z0 = avg(2)
+  const z = unit(z0.map((v, c) => v - dot(z0, y) * y[c]) as Vec)
+  return [cross(y, z), y, z]
+}
+
 /** Normalisierte Features -> Handform in Hand-Koordinaten (unabhängig von der Ausrichtung zur Kamera). */
 export function toHandShape(features: number[]): number[] {
   const axes = handFrame(features)

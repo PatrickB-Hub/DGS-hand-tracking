@@ -68,9 +68,15 @@
               </div>
             </div>
             <div class="readout">
-              <img id="sign" class="sign" width="150" height="200" alt="" hidden />
+              <div class="sign-row">
+                <img id="sign" class="sign" width="160" height="160" alt="" hidden />
+                <canvas id="hand3d" class="hand3d" hidden></canvas>
+              </div>
               <div id="word-view" class="word" aria-live="polite"></div>
-              <p class="hint">Die gestrichelte Hand ist die Schablone.</p>
+              <p class="hint">
+                Die gestrichelte Hand ist die Schablone. Die 3D-Hand zeigt sie von allen Seiten: ziehen zum Drehen, gelb
+                ist die Handinnenfläche.
+              </p>
             </div>
             <div class="group">
               <h2>Fortschritt</h2>
@@ -124,12 +130,10 @@
 
       <footer>
         Dieses Werkzeug ergänzt einen DGS-Kurs, es ersetzt ihn nicht. Das Kamerabild wird nur im Browser verarbeitet und
-        nicht übertragen. J, Z, Ä, Ö, Ü, ß und SCH enthalten Bewegung und folgen in Phase 2. Handzeichnungen:
-        <a href="https://commons.wikimedia.org/wiki/Category:German_manual_alphabet"
-          >Richard Huber, Deutsche Gehörlosenhilfe Bayern e. V.</a
-        >
-        nach einer Infokarte des Landesverbands Bayern der Gehörlosen e. V.,
-        <a href="https://creativecommons.org/licenses/by-sa/4.0/deed.de">CC BY-SA 4.0</a>.
+        nicht übertragen. J, Z, Ä, Ö, Ü, ß und SCH enthalten Bewegung und folgen in Phase 2. Handzeichnungen mit
+        freundlicher Genehmigung von
+        <a href="https://www.anysign.app">Anysign</a>, verwendet unter
+        <a href="https://creativecommons.org/licenses/by-nc/4.0/deed.de">CC BY-NC 4.0</a>.
       </footer>
     </div>
     <script type="module" src="/src/main.ts"></script>
