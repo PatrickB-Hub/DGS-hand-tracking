@@ -3,6 +3,8 @@
 Trainer für das Fingeralphabet der Deutschen Gebärdensprache (DGS), komplett im Browser. Die Webcam erkennt die
 Handform, eine Schablone zeigt pro Finger, was stimmt und was nicht. Das Kamerabild verlässt den Browser nicht.
 
+**Live:** [dgs.patrickbecker.work](https://dgs.patrickbecker.work)
+
 > Ergänzt einen DGS-Kurs, ersetzt ihn nicht.
 
 ```sh
